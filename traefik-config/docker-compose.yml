@@ -1,0 +1,29 @@
+services:
+  reverse-proxy:
+    image: traefik:v3.2
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - self-host
+    ports:
+      - 80:80
+      - 443:443 
+    environment:
+      - "CF_API_EMAIL=your_email@example.com"  
+      - "CF_API_KEY=your_api_key"  # Cloudflare API key - Global API key  - Either this or below one is required
+      - "CF_DNS_API_TOKEN=your_dns_api_token"  # Cloudflare DNS API token - Zone.Zone Read and Zone.DNS Edit
+    volumes:
+      - /etc/localtime:/etc/localtime:ro  
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # Allow Traefik to access Docker
+      - ./config/traefik.yml:/traefik.yml:ro  # Traefik configuration file
+      - ./config/acme.json:/acme.json:rw  # ACME (Let's Encrypt) configuration
+      - ./config/config.yml:/config.yml:rw  # Additional configuration
+      - ./config/logs:/var/log/traefik:rw  # Log files
+
+networks:
+  self-host:
+    external: true
+    name: self-host  # Use an existing Docker network named 'backend'
+

@@ -1,0 +1,59 @@
+services:
+  backend:
+    image: prompt-search-engine:latest
+    labels:
+      - "traefik.enable=true"
+      # HTTP
+      - "traefik.http.routers.frontend.entrypoints=http"
+      - "traefik.http.routers.frontend.rule=Host(`prompt-search.harshiitkgp.in`)"
+      - "traefik.http.middlewares.frontend-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.frontend.middlewares=frontend-redirect"
+      
+      # HTTPS
+      - "traefik.http.routers.frontend-secure.entrypoints=https"
+      - "traefik.http.routers.frontend-secure.rule=Host(`prompt-search.harshiitkgp.in`)"
+      - "traefik.http.routers.frontend-secure.tls=true"
+      - "traefik.http.routers.frontend-secure.tls.certresolver=cloudflare"
+      - "traefik.http.services.frontend.loadbalancer.server.port=8989"
+      
+      # Headers
+      - "traefik.http.middlewares.secure-headers.headers.sslredirect=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.secure-headers.headers.forceSTSHeader=true"
+      - "traefik.http.routers.frontend-secure.middlewares=secure-headers"
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - ENV=dev
+      - FORWARDED_ALLOW_IPS="*"
+    deploy:
+      mode: replicated
+      replicas: 3
+    volumes:
+      - app_data:/app/data
+      - app_logs:/app/logs
+      - ./.env:/app/.env  # Add this line to mount the .env file
+    networks:
+      - self-host
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 1
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  app_data:
+  app_logs:
+
+networks:
+  self-host:
+    external: true
+    name: self-host

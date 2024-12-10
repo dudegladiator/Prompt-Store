@@ -1,0 +1,33 @@
+global:
+  checkNewVersion: false # no check for new version
+  sendAnonymousUsage: false # no send usage data
+log:
+  level: DEBUG # log level set to debug
+entryPoints:
+  http:
+    address: ":80" # listen on port 80 for http
+    http:
+      redirections:
+        entryPoint:
+          to: https # redirect http to https
+          scheme: https
+  https:
+    address: ":443" # listen on port 443 for https
+serversTransport:
+  insecureSkipVerify: true # skip verify ssl certs
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock" # use docker socket
+    exposedByDefault: false # not expose containers by default
+  file:
+    filename: /config.yml
+certificatesResolvers:
+  cloudflare:
+    acme:
+      email: your-email # email for acme certs
+      storage: acme.json
+      dnsChallenge:
+        provider: cloudflare # use cloudflare for dns challenge
+        resolvers:
+          - "1.1.1.1:53" # use cloudflare dns
+          - "8.8.8.8:53" # use google dns
