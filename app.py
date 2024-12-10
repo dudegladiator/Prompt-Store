@@ -1,12 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
+from fastapi.staticfiles import StaticFiles
+from src.serve_html import router as serve_html
+from src.serve_apis import router as serve_apis
 
 app = FastAPI(
-    title="Prompt Generator API",
+    title="Prompt Search Engine",
     description="API for generating and managing AI prompts",
     version="1.0.0"
 )
+
+# Mount static files first
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Configure CORS
 app.add_middleware(
@@ -18,8 +23,15 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(serve_html.router)
-app.include_router(serve_api.router)
+app.include_router(serve_html)
+app.include_router(serve_apis)
+
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint
+    """
+    return {"status": "ok"}
 
 # Optional: Add startup and shutdown events if needed
 @app.on_event("startup")

@@ -21,6 +21,8 @@ services:
       - "traefik.http.middlewares.secure-headers.headers.stsSeconds=31536000"
       - "traefik.http.middlewares.secure-headers.headers.forceSTSHeader=true"
       - "traefik.http.routers.frontend-secure.middlewares=secure-headers"
+    ports:
+      - 8989:8989
     env_file:
       - .env
     build:
@@ -30,9 +32,9 @@ services:
     environment:
       - ENV=dev
       - FORWARDED_ALLOW_IPS="*"
-    deploy:
-      mode: replicated
-      replicas: 3
+    # deploy:
+    #   mode: replicated
+    #   replicas: 3
     volumes:
       - app_data:/app/data
       - app_logs:/app/logs
