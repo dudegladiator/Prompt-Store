@@ -5,26 +5,30 @@ from typing import Dict, Any
 
 router = APIRouter(prefix="/api")
 
-# Pydantic models for request/response validation
 class Prompt(BaseModel):
-    id: int
-    title: str
+    prompt_id: str
+    name: str
     description: str
-    category: str
-    prompt: str
+    prompts: List[str]
+    like_count: int
 
 class CustomizationRequest(BaseModel):
     prompt_id: int
-    customization: str
+    prompt_key: str
+    customization_message: str
+    
+class CustomizationResponse(BaseModel):
+    prompt_id: int
+    prompt_key: str
+    old_prompt: str
+    new_prompt: str
+    customization_message: str
 
 class SearchResponse(BaseModel):
-    items: List[Prompt]
+    prompt: Prompt
     total_pages: int
     current_page: int
     total_items: int
-
-class CustomizationResponse(BaseModel):
-    prompt: Prompt
 
 @router.get("/prompts/search", response_model=SearchResponse)
 async def search_prompts(

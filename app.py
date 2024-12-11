@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from src.serve_html import router as serve_html
-from src.serve_apis import router as serve_apis
+from src.routers import serve_html, serve_apis
 
 app = FastAPI(
     title="Prompt Search Engine",
@@ -31,7 +30,7 @@ async def health_check():
     """
     Health check endpoint
     """
-    return {"status": "ok"}
+    return {"status": "healthy"}
 
 # Optional: Add startup and shutdown events if needed
 @app.on_event("startup")
