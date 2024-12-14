@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from src.routers import serve_html, serve_apis
 
 app = FastAPI(
-    title="Prompt Search Engine",
+    title="Prompt Store",
     description="API for generating and managing AI prompts",
     version="1.0.0"
 )
@@ -22,28 +22,9 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(serve_html)
-app.include_router(serve_apis)
+app.include_router(serve_html.router)
+app.include_router(serve_apis.router)
 
 @app.get("/health")
 async def health_check():
-    """
-    Health check endpoint
-    """
     return {"status": "healthy"}
-
-# Optional: Add startup and shutdown events if needed
-@app.on_event("startup")
-async def startup_event():
-    """
-    Initialize any necessary resources on startup
-    """
-    pass
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """
-    Clean up resources on shutdown
-    """
-    pass
-

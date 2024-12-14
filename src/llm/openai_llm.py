@@ -61,3 +61,31 @@ async def groq_chat_completions(
     except Exception as e:
         logger.error("Error in groq_chat_completions: %s", str(e))
         raise HTTPException(status_code=500, detail=str(e))
+    
+async def mistral_chat_completions(
+    input: str,
+    system_prompt: str = "",
+    model: str = "mistral-1.0-70b"
+):
+    try:
+        logger.info("Starting mistral_chat_completions with model: %s", model)
+        client = OpenAI(
+            api_key=settings.MISTRAL_API_KEY,
+            base_url="https://api.mistral.ai/v1"
+        )
+        
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": input
+                }
+            ]
+        )
+        logger.info("mistral_chat_completions response received")
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.error("Error in mistral_chat_completions: %s", str(e))
+        raise HTTPException(status_code=500, detail=str(e))

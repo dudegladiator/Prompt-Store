@@ -56,7 +56,7 @@ def delete_documents(tenant_id: str, integration_id: str, uuids: List[str]):
         logger.error(f"Error deleting documents for tenant_id {tenant_id} and integration_id: {integration_id}: {str(e)}")
         return None
     
-def retrieve_documents(tenant_id: str, query: Document, filters: Dict = None, top_k: int = 5):
+def retrieve_documents(tenant_id: str, query: str, filters: Dict = None, top_k: int = 5):
     logger.info(f"Retrieving documents for tenant_id: {tenant_id}, query: {query}, top_k: {top_k}")
     try:
         vector_store = PineconeVectorStore(index=index, embedding=embeddings, namespace=tenant_id)

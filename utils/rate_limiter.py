@@ -1,74 +1,79 @@
 from fastapi import HTTPException, Request
 import redis
-from datetime import datetime
 import time
 from functools import wraps
-from typing import Optional
+from typing import Optional, Callable
 from utils.config import settings
+from utils.app_logger import setup_logger
+
+logger = setup_logger("utils/rate_limiter.py")
 
 class RateLimiter:
     def __init__(self):
-        self.redis_client = redis.from_StrictRedis.from_url(settings.REDIS_URI)
-        
-    async def is_rate_limited(
-        self,
-        key: str,
-        max_requests: int,
-        window_seconds: int
-    ) -> tuple[bool, Optional[int]]:
-        """
-        Check if the request should be rate limited
-        Returns: (is_limited, retry_after_seconds)
-        """
-        current = int(time.time())
-        window_key = f"{key}:{current // window_seconds}"
-        
+        self.redis_client = redis.Redis.from_url(settings.REDIS_URI)
         try:
-            # Increment the counter for the current window
-            requests = self.redis_client.incr(window_key)
+            self.redis_client.ping()
+            logger.info("Successfully connected to Redis")
+        except redis.exceptions.ConnectionError as e:
+            logger.error(f"Redis connection error: {e}")
+            raise
+
+    def is_rate_limited(self, key: str, max_requests: int, window_seconds: int) -> tuple[bool, Optional[int]]:
+        """
+        Simple rate limiting implementation using Redis
+        """
+        try:
+            # Create a window key that includes the time window
+            current_time = int(time.time())
+            window_key = f"ratelimit:{key}:{current_time // window_seconds}"
+
+            # Get the current count
+            count = self.redis_client.get(window_key)
             
-            # Set expiration if this is the first request in the window
-            if requests == 1:
-                self.redis_client.expire(window_key, window_seconds)
+            if count is None:
+                # First request in this window
+                self.redis_client.setex(window_key, window_seconds, 1)
+                return False, None
             
-            if requests > max_requests:
-                retry_after = window_seconds - (current % window_seconds)
+            count = int(count)
+            if count >= max_requests:
+                # Calculate retry after
+                retry_after = window_seconds - (current_time % window_seconds)
                 return True, retry_after
-                
-            return False, None
             
-        except redis.RedisError:
-            # If Redis is unavailable, fail open (allow the request)
+            # Increment the counter
+            self.redis_client.incr(window_key)
             return False, None
 
-def rate_limit(
-    max_requests: int = 100,
-    window_seconds: int = 60,
-    key_func=None
-):
+        except redis.RedisError as e:
+            logger.error(f"Redis error: {e}")
+            return False, None  # Fail open in case of Redis errors
+
+def rate_limit(max_requests: int = 100, window_seconds: int = 60):
     """
-    Rate limiting decorator that can be applied to API endpoints
+    Rate limiting decorator for FastAPI endpoints
     """
     def decorator(func):
         @wraps(func)
         async def wrapped(request: Request, *args, **kwargs):
-            # Initialize rate limiter
             limiter = RateLimiter()
             
-            # Generate rate limit key
-            if key_func:
-                rate_limit_key = key_func(request)
-            else:
-                # Default to IP-based rate limiting
-                rate_limit_key = request.client.host
-                
-            is_limited, retry_after = await limiter.is_rate_limited(
+            # Get client IP
+            client_ip = request.headers.get("X-Forwarded-For", request.client.host)
+            
+            # Add endpoint path to make rate limit specific to each endpoint
+            rate_limit_key = f"{client_ip}:{request.url.path}"
+            
+            logger.debug(f"Checking rate limit for IP: {client_ip} on path: {request.url.path}")
+            
+            is_limited, retry_after = limiter.is_rate_limited(
                 rate_limit_key,
                 max_requests,
                 window_seconds
             )
             
             if is_limited:
+                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
                 raise HTTPException(
                     status_code=429,
                     detail={
@@ -76,7 +81,7 @@ def rate_limit(
                         "retry_after": retry_after
                     }
                 )
-                
+            
             return await func(request, *args, **kwargs)
         return wrapped
     return decorator

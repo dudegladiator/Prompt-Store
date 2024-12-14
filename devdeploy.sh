@@ -88,15 +88,15 @@ start_tunnel() {
 
 # Stop specific Docker containers
 echo "Stopping Docker containers..."
-docker stop prompt-search-engine
+docker stop prompt-store
 
 # Remove specific Docker containers
 echo "Removing Docker containers..."
-docker rm prompt-search-engine
+docker rm prompt-store
 
 # Remove associated Docker images
 echo "Removing Docker images..."
-docker rmi -f prompt-search-engine
+docker rmi -f prompt-store
 
 # Remove unused Docker volumes
 echo "Removing unused Docker volumes..."
@@ -110,7 +110,7 @@ docker network prune -f
 echo "Pruning unused Docker resources..."
 docker system prune -a -f --volumes
 
-docker network create self-host
+# docker network create self-host
 
 # Build and start the containers
 docker compose up --build -d

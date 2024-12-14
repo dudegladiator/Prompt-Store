@@ -1,21 +1,33 @@
-// API Endpoints (commented for future implementation)
-/*
+// API Configuration
 const API = {
-    base: 'https://api.promptgenerator.com',
-    search: '/api/prompts/search',      // GET: ?query=&category=&page=&pageSize=
-    categories: '/api/categories',       // GET: Get all categories
-    customize: '/api/prompts/customize', // POST: { promptId, customization }
-}
-*/
+    base: 'https://oo-dt-jamaica-flesh.trycloudflare.com/api',
+    search: '/prompts/search',
+    categories: '/categories',
+    customize: '/prompts/customize'
+};
 
-// Fake Data
-const fakeCategories = [
-    "Business Writing",
-    "Creative Writing",
-    "Programming",
-    "Marketing",
-    "Career Development"
-];
+// Helper function for API calls
+async function fetchAPI(endpoint, options = {}) {
+    try {
+        const response = await fetch(`${API.base}${endpoint}`, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'API request failed');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+    }
+}
 
 const fakePrompts = [
     {
@@ -24,99 +36,7 @@ const fakePrompts = [
         description: "1AI prompt for writing professional and effective emails",
         category: "Business Writing",
         prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    },
-    {
-        id: 1,
-        title: "Professional Email Writer",
-        description: "2AI prompt for writing professional and effective emails",
-        category: "Business Writing",
-        prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    },
-    {
-        id: 1,
-        title: "Professional Email Writer",
-        description: "3AI prompt for writing professional and effective emails",
-        category: "Business Writing",
-        prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    },
-    {
-        id: 1,
-        title: "Professional Email Writer",
-        description: "4AI prompt for writing professional and effective emails",
-        category: "Business Writing",
-        prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    },
-    {
-        id: 1,
-        title: "Professional Email Writer",
-        description: "AI prompt for writing professional and effective emails",
-        category: "Business Writing",
-        prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    },
-    {
-        id: 1,
-        title: "Professional Email Writer",
-        description: "AI prompt for writing professional and effective emails",
-        category: "Business Writing",
-        prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    },
-    {
-        id: 1,
-        title: "Professional Email Writer",
-        description: "AI prompt for writing professional and effective emails",
-        category: "Business Writing",
-        prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    },
-    {
-        id: 1,
-        title: "Professional Email Writer",
-        description: "9AI prompt for writing professional and effective emails",
-        category: "Business Writing",
-        prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    },
-    {
-        id: 1,
-        title: "Professional Email Writer",
-        description: "10AI prompt for writing professional and effective emails",
-        category: "Business Writing",
-        prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    },
-    {
-        id: 1,
-        title: "Professional Email Writer",
-        description: "AI prompt for writing professional and effective emails",
-        category: "Business Writing",
-        prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    },
-    {
-        id: 2,
-        title: "Story Generator",
-        description: "Creates unique short stories based on given elements",
-        category: "Creative Writing",
-        prompt: "You are a creative story generator. Create an engaging short story incorporating the following elements: mystery, surprise ending, and character development. The story should be original and captivating."
-    },
-    {
-        id: 3,
-        title: "Code Reviewer",
-        description: "Technical prompt for code review and optimization",
-        category: "Programming",
-        prompt: "Act as a senior software engineer conducting a code review. Analyze the code for best practices, potential bugs, security issues, and suggest optimizations while maintaining code readability and performance."
-    },
-    {
-        id: 4,
-        title: "Marketing Copy Expert",
-        description: "Creates compelling marketing content",
-        category: "Marketing",
-        prompt: "You are an expert marketing copywriter. Create compelling marketing copy that engages the target audience, highlights key benefits, and includes a strong call-to-action while maintaining brand voice."
-    },
-    {
-        id: 5,
-        title: "Interview Coach",
-        description: "Helps prepare for job interviews",
-        category: "Career Development",
-        prompt: "Act as an interview coach preparing a candidate for a job interview. Provide strategic answers to common interview questions, body language tips, and guidance on presenting professional experience effectively."
     }
-    // Add more fake prompts as needed
 ];
 
 // State Management
@@ -149,14 +69,20 @@ window.onload = function() {
 };
 
 // Initialize Categories
-function initializeCategories() {
-    fakeCategories.forEach(category => {
-        const button = document.createElement('button');
-        button.className = 'px-4 py-2 text-sm text-white bg-zinc-900 rounded-full hover:bg-zinc-800 focus:outline-none';
-        button.textContent = category;
-        button.addEventListener('click', () => searchByCategory(category));
-        categoriesContainer.appendChild(button);
-    });
+async function initializeCategories() {
+    try {
+        const categories = await fetchAPI(API.categories);
+        
+        categories.forEach(category => {
+            const button = document.createElement('button');
+            button.className = 'px-4 py-2 text-sm text-white bg-zinc-900 rounded-full hover:bg-zinc-800 focus:outline-none';
+            button.textContent = category;
+            button.addEventListener('click', () => searchByCategory(category));
+            categoriesContainer.appendChild(button);
+        });
+    } catch (error) {
+        console.error('Failed to load categories:', error);
+    }
 }
 
 // Initialize Clipboard.js
@@ -175,30 +101,29 @@ function initializeClipboard() {
 // Search Functions
 async function performSearch() {
     const query = searchInput.value.trim();
-    if (!query) return; // Don't proceed if query is empty
 
     currentSearchQuery = query;
     currentCategory = null;
     currentPage = 1;
     
-    // Hide categories section completely
     document.getElementById('categories-section').style.display = 'none';
-    
-    // Move search bar up
     searchContainer.classList.remove('justify-center');
     searchContainer.classList.add('pt-8');
-    
-    // Show results container
     resultsContainer.classList.remove('hidden');
     
     try {
-        // Show loading state
         resultsGrid.innerHTML = '<div class="col-span-3 text-center text-white">Searching...</div>';
         
-        // Simulate API call
-        const results = await fakeSearchAPI(query, currentPage, pageSize);
+        const searchParams = new URLSearchParams({
+            query: query,
+            page: currentPage,
+            page_size: pageSize,
+            // sort_by: 'created_at',
+            // sort_order: 'desc'
+        });
+
+        const results = await fetchAPI(`${API.search}?${searchParams}`);
         
-        // Display results
         if (results.items.length === 0) {
             resultsGrid.innerHTML = '<div class="col-span-3 text-center text-white">No results found</div>';
         } else {
@@ -268,14 +193,21 @@ async function fakeSearchAPI(query, page, pageSize, category = null) {
     };
 }
 
-async function fakeCustomizeAPI(promptData, customization) {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    return {
-        ...promptData,
-        prompt: `${promptData.prompt}\n\nCustomized with: ${customization}`
-    };
+async function customizePrompt(promptId, customization) {
+    try {
+        const response = await fetchAPI(API.customize, {
+            method: 'POST',
+            body: JSON.stringify({
+                prompt_id: promptId,
+                customization_message: customization
+            })
+        });
+
+        return response.customized_prompt;
+    } catch (error) {
+        console.error('Customization error:', error);
+        throw error;
+    }
 }
 
 // Handle Page Change
@@ -302,13 +234,13 @@ async function handlePageChange(page) {
 
 // Display Functions
 function displayResults(results) {
-    resultsGrid.innerHTML = ''; // Clear existing results
+    resultsGrid.innerHTML = '';
     
     results.items.forEach(prompt => {
         const card = document.createElement('div');
         card.className = 'bg-zinc-900 rounded-lg p-6 cursor-pointer hover:bg-zinc-800 transition-colors';
         card.innerHTML = `
-            <h3 class="text-xl font-semibold text-white mb-2">${prompt.title}</h3>
+            <h3 class="text-xl font-semibold text-white mb-2">${prompt.name}</h3>
             <p class="text-gray-400 mb-2">${prompt.description}</p>
             <span class="inline-block px-3 py-1 text-sm text-white bg-zinc-800 rounded-full">${prompt.category}</span>
         `;
@@ -316,10 +248,11 @@ function displayResults(results) {
         resultsGrid.appendChild(card);
     });
 
-    // Only show pagination if total items exceed page size
-    paginationContainer.innerHTML = '';
-    if (results.totalItems > pageSize) {
-        displayPagination(results.totalPages);
+    // Update pagination based on API response
+    if (results.total_pages > 1) {
+        displayPagination(results.total_pages, results.has_next, results.has_previous);
+    } else {
+        paginationContainer.innerHTML = '';
     }
 }
 
@@ -426,15 +359,16 @@ async function viewAllPrompts() {
 }
 
 function openModal(prompt) {
-    document.getElementById('modal-title').textContent = prompt.title;
+    document.getElementById('modal-title').textContent = prompt.name;
     document.getElementById('modal-category').textContent = prompt.category;
     document.getElementById('modal-description').textContent = prompt.description;
     document.getElementById('modal-prompt').textContent = prompt.prompt;
-    promptModal.classList.remove('hidden');
     
-    // Update URL
-    const newUrl = `${window.location.pathname}?prompt_id=${prompt.id}`;
-    window.history.pushState({ promptId: prompt.id }, '', newUrl);
+    // Add prompt ID for customization
+    document.querySelector('.modal-content').dataset.promptId = prompt.prompt_id;
+    
+    promptModal.classList.remove('hidden');
+    window.history.pushState({ promptId: prompt.prompt_id }, '', `?prompt_id=${prompt.prompt_id}`);
 }
 
 function closeModal() {
@@ -507,20 +441,13 @@ document.getElementById('customize-button').addEventListener('click', async () =
         button.disabled = true;
 
         try {
-            const currentPrompt = {
-                title: document.getElementById('modal-title').textContent,
-                category: document.getElementById('modal-category').textContent,
-                description: document.getElementById('modal-description').textContent,
-                prompt: document.getElementById('modal-prompt').textContent
-            };
-
-            const customizedPrompt = await fakeCustomizeAPI(currentPrompt, customization);
+            const promptId = document.querySelector('[data-prompt-id]').dataset.promptId;
+            const customizedPrompt = await customizePrompt(promptId, customization);
             
-            document.getElementById('modal-prompt').textContent = customizedPrompt.prompt;
+            document.getElementById('modal-prompt').textContent = customizedPrompt;
             document.getElementById('customization-input').value = '';
         } catch (error) {
-            console.error('Customization error:', error);
-            alert('An error occurred while customizing the prompt');
+            alert('Failed to customize prompt: ' + error.message);
         } finally {
             button.textContent = 'Customize Prompt';
             button.disabled = false;
