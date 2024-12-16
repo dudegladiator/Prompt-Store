@@ -1,6 +1,6 @@
 // API Configuration
 const API = {
-    base: 'https://accepting-fixes-ordinary-beads.trycloudflare.com/api',
+    base: 'https://prompt.harshiitkgp.in/api',
     search: '/prompts/search',
     categories: '/categories',
     customize: '/prompts/customize'
