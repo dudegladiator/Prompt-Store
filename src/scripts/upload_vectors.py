@@ -217,11 +217,11 @@ async def upload_prompt_to_vector_db(batch_size: int = 1):
     Main function to process prompts and upload to Pinecone and insert into mongodb
     """
     api_keys = [
-        "AIzaSyC5TSKNvjbhUfJuI_Q5GT3qxrLylxZMTKI",
-        "AIzaSyBqkpKGrsVfRY0W_vI4lDogUsoTYEoG6FU",
-        "AIzaSyDcU6eaH5SpknJaV5faCnI5TXRWzC5QmPk",
-        "AIzaSyBgkflpbBTGkME2idrtzT6gVqX_H8Exkms",
-        "AIzaSyBuNcIkZrXXwcUjOaYxfzxhYEIUM1l13zc"
+        settings.GEMINI_API_KEY1,
+        settings.GEMINI_API_KEY2,
+        settings.GEMINI_API_KEY3,
+        settings.GEMINI_API_KEY4,
+        settings.GEMINI_API_KEY5
     ]
     api_key_manager = APIKeyManager(api_keys)
     try:

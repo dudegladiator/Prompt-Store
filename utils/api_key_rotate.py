@@ -2,7 +2,9 @@ from time import sleep
 from datetime import datetime, timedelta
 import random
 from typing import List
+from utils.app_logger import setup_logger
 
+logger = setup_logger("utils/api_key_rotate.py")
 class APIKeyManager:
     def __init__(self, api_keys: List[str], rate_limit: int = 10, cooldown_period: int = 60):
         self.api_keys = api_keys
@@ -35,8 +37,9 @@ class APIKeyManager:
             
             # If we've checked all keys and none are available, wait
             if self.current_key_index == start_index:
-                sleep(30)
+                sleep(10)
                 
     def use_key(self, key: str):
         self.request_counts[key] += 1
+        logger.info(f"Key has been used {self.request_counts[key]} times")
         self.last_request_time[key] = datetime.now()

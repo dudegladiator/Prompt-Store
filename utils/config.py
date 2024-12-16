@@ -11,10 +11,17 @@ load_dotenv()
 class Settings(BaseSettings):
     MONGODB_URI: Optional[str] = os.getenv("MONGODB_URI")
     REDIS_URI: Optional[str] = os.getenv("REDIS_URI")
-    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
     GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY")
     MISTRAL_API_KEY: Optional[str] = os.getenv("MISTRAL_API_KEY")
     PINECONE_API_KEY: Optional[str] = os.getenv("PINECONE_API_KEY")
+    
+    GEMINI_API_KEY1: Optional[str] = os.getenv("GEMINI_API_KEY1")
+    GEMINI_API_KEY2: Optional[str] = os.getenv("GEMINI_API_KEY2")
+    GEMINI_API_KEY3: Optional[str] = os.getenv("GEMINI_API_KEY3")
+    GEMINI_API_KEY4: Optional[str] = os.getenv("GEMINI_API_KEY4")
+    GEMINI_API_KEY5: Optional[str] = os.getenv("GEMINI_API_KEY5")
+    
+    API_BASE_URL: Optional[str] = os.getenv("API_BASE_URL")
     
     
     class Config:

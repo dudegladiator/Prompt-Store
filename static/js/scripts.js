@@ -1,6 +1,6 @@
 // API Configuration
 const API = {
-    base: 'https://prompt.harshiitkgp.in/api',
+    base: process.env.API_BASE_URL,
     search: '/prompts/search',
     categories: '/categories',
     customize: '/prompts/customize'
