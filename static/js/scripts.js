@@ -1,10 +1,16 @@
 // API Configuration
 const API = {
-    base: 'https://oo-dt-jamaica-flesh.trycloudflare.com/api',
+    base: 'https://accepting-fixes-ordinary-beads.trycloudflare.com/api',
     search: '/prompts/search',
     categories: '/categories',
     customize: '/prompts/customize'
 };
+
+function debugElement(id) {
+    const element = document.getElementById(id);
+    console.log(`Element ${id}:`, element);
+    return element;
+}
 
 // Helper function for API calls
 async function fetchAPI(endpoint, options = {}) {
@@ -115,12 +121,16 @@ async function performSearch() {
         resultsGrid.innerHTML = '<div class="col-span-3 text-center text-white">Searching...</div>';
         
         const searchParams = new URLSearchParams({
-            query: query,
+            query: query || undefined,
             page: currentPage,
             page_size: pageSize,
-            // sort_by: 'created_at',
-            // sort_order: 'desc'
+            sort_by: 'created_at',
+            sort_order: 'desc'
         });
+
+        if (currentCategory) {
+            searchParams.append('category', currentCategory);
+        }
 
         const results = await fetchAPI(`${API.search}?${searchParams}`);
         
@@ -141,17 +151,29 @@ async function searchByCategory(category) {
     currentPage = 1;
     searchInput.value = '';
     
-    // Hide categories section
     document.getElementById('categories-section').style.display = 'none';
-    
     searchContainer.classList.remove('justify-center');
     searchContainer.classList.add('pt-8');
     resultsContainer.classList.remove('hidden');
 
     try {
         resultsGrid.innerHTML = '<div class="col-span-3 text-center text-white">Loading...</div>';
-        const results = await fakeSearchAPI('', currentPage, pageSize, category);
-        displayResults(results);
+        
+        const searchParams = new URLSearchParams({
+            category: category,
+            page: currentPage,
+            page_size: pageSize,
+            sort_by: 'created_at',
+            sort_order: 'desc'
+        });
+
+        const results = await fetchAPI(`${API.search}?${searchParams}`);
+        
+        if (results.items.length === 0) {
+            resultsGrid.innerHTML = '<div class="col-span-3 text-center text-white">No prompts found in this category</div>';
+        } else {
+            displayResults(results);
+        }
     } catch (error) {
         console.error('Category search error:', error);
         resultsGrid.innerHTML = '<div class="col-span-3 text-center text-white">An error occurred</div>';
@@ -203,7 +225,11 @@ async function customizePrompt(promptId, customization) {
             })
         });
 
-        return response.customized_prompt;
+        if (response && response.customized_prompt) {
+            return response.customized_prompt;
+        } else {
+            throw new Error('Invalid response from customization API');
+        }
     } catch (error) {
         console.error('Customization error:', error);
         throw error;
@@ -213,17 +239,23 @@ async function customizePrompt(promptId, customization) {
 // Handle Page Change
 async function handlePageChange(page) {
     currentPage = page;
-    let results;
     
     try {
+        const searchParams = new URLSearchParams({
+            page: currentPage,
+            page_size: pageSize,
+            sort_by: 'created_at',
+            sort_order: 'desc'
+        });
+
         if (currentSearchQuery) {
-            results = await fakeSearchAPI(currentSearchQuery, currentPage, pageSize);
-        } else if (currentCategory) {
-            results = await fakeSearchAPI('', currentPage, pageSize, currentCategory);
-        } else {
-            results = await fakeSearchAPI('', currentPage, pageSize);
+            searchParams.append('query', currentSearchQuery);
         }
-        
+        if (currentCategory) {
+            searchParams.append('category', currentCategory);
+        }
+
+        const results = await fetchAPI(`${API.search}?${searchParams}`);
         displayResults(results);
         window.scrollTo(0, 0);
     } catch (error) {
@@ -242,19 +274,24 @@ function displayResults(results) {
         card.innerHTML = `
             <h3 class="text-xl font-semibold text-white mb-2">${prompt.name}</h3>
             <p class="text-gray-400 mb-2">${prompt.description}</p>
-            <span class="inline-block px-3 py-1 text-sm text-white bg-zinc-800 rounded-full">${prompt.category}</span>
+            <div class="flex flex-wrap gap-2">
+                <span class="inline-block px-3 py-1 text-sm text-white bg-zinc-800 rounded-full">${prompt.category}</span>
+            </div>
         `;
         card.addEventListener('click', () => openModal(prompt));
         resultsGrid.appendChild(card);
     });
 
-    // Update pagination based on API response
     if (results.total_pages > 1) {
-        displayPagination(results.total_pages, results.has_next, results.has_previous);
+        displayPagination(results.total_pages);
     } else {
         paginationContainer.innerHTML = '';
     }
 }
+// This line need to be added after categories for tags
+// ${prompt.tags.map(tag => 
+//     `<span class="inline-block px-3 py-1 text-sm text-white bg-zinc-800 rounded-full">${tag}</span>`
+// ).join('')}
 
 function displayPagination(totalPages) {
     paginationContainer.innerHTML = '';
@@ -290,7 +327,7 @@ function displayPagination(totalPages) {
         if (endPage < totalPages - 1) {
             const ellipsis = document.createElement('span');
             ellipsis.className = 'text-white px-2';
-            ellipsis.textContent = '...';
+            ellipsis.textContent = '...';https://accepting-fixes-ordinary-beads.trycloudflare.com/?prompt_id=4d8555db-4d63-49dd-84ec-f382dcb7167e
             paginationWrapper.appendChild(ellipsis);
         }
         paginationWrapper.appendChild(createPaginationButton(totalPages.toString(), totalPages));
@@ -322,14 +359,18 @@ function findPromptById(id) {
     return fakePrompts.find(p => p.id === parseInt(id));
 }
 
-function checkUrlForPrompt() {
+async function checkUrlForPrompt() {
     const urlParams = new URLSearchParams(window.location.search);
     const promptId = urlParams.get('prompt_id');
     
     if (promptId) {
-        const prompt = findPromptById(parseInt(promptId));
-        if (prompt) {
-            openModal(prompt);
+        try {
+            const prompt = await fetchPromptById(promptId);
+            if (prompt) {
+                openModal(prompt);
+            }
+        } catch (error) {
+            console.error('Error loading prompt:', error);
         }
     }
 }
@@ -341,16 +382,22 @@ async function viewAllPrompts() {
     currentPage = 1;
     searchInput.value = '';
     
-    // Hide categories section
     document.getElementById('categories-section').style.display = 'none';
-    
     searchContainer.classList.remove('justify-center');
     searchContainer.classList.add('pt-8');
     resultsContainer.classList.remove('hidden');
 
     try {
         resultsGrid.innerHTML = '<div class="col-span-3 text-center text-white">Loading...</div>';
-        const results = await fakeSearchAPI('', currentPage, pageSize);
+        
+        const searchParams = new URLSearchParams({
+            page: currentPage,
+            page_size: pageSize,
+            sort_by: 'created_at',
+            sort_order: 'desc'
+        });
+
+        const results = await fetchAPI(`${API.search}?${searchParams}`);
         displayResults(results);
     } catch (error) {
         console.error('View all prompts error:', error);
@@ -358,23 +405,59 @@ async function viewAllPrompts() {
     }
 }
 
+async function fetchPromptById(promptId) {
+    try {
+        const response = await fetchAPI(`/prompts/${promptId}`);
+        return response;
+    } catch (error) {
+        console.error('Error fetching prompt:', error);
+        return null;
+    }
+}
+
+
 function openModal(prompt) {
-    document.getElementById('modal-title').textContent = prompt.name;
-    document.getElementById('modal-category').textContent = prompt.category;
-    document.getElementById('modal-description').textContent = prompt.description;
-    document.getElementById('modal-prompt').textContent = prompt.prompt;
-    
-    // Add prompt ID for customization
-    document.querySelector('.modal-content').dataset.promptId = prompt.prompt_id;
-    
-    promptModal.classList.remove('hidden');
-    window.history.pushState({ promptId: prompt.prompt_id }, '', `?prompt_id=${prompt.prompt_id}`);
+    try {
+        if (!prompt) {
+            throw new Error('No prompt data available');
+        }
+
+        document.getElementById('modal-title').textContent = prompt.name || 'Untitled';
+        document.getElementById('modal-category').textContent = prompt.category || 'Uncategorized';
+        document.getElementById('modal-description').textContent = prompt.description || '';
+        document.getElementById('modal-prompt').textContent = prompt.original_prompt || '';
+        
+        // Store prompt ID for customization
+        const modalContent = document.getElementById('modal-content');
+        if (modalContent) {
+            modalContent.setAttribute('data-prompt-id', prompt.prompt_id);
+        } else {
+            console.error('Modal content element not found');
+        }
+        
+        // Clear customization input
+        document.getElementById('customization-input').value = '';
+        
+        promptModal.classList.remove('hidden');
+        window.history.pushState({ promptId: prompt.prompt_id }, '', `?prompt_id=${prompt.prompt_id}`);
+    } catch (error) {
+        console.error('Error opening modal:', error);
+        alert('Failed to load prompt details');
+    }
 }
 
 function closeModal() {
     promptModal.classList.add('hidden');
     // Remove prompt_id from URL
     window.history.pushState({}, '', window.location.pathname);
+}
+
+function showLoading() {
+    resultsGrid.innerHTML = '<div class="col-span-3 text-center text-white">Loading...</div>';
+}
+
+function showError(message) {
+    resultsGrid.innerHTML = `<div class="col-span-3 text-center text-white">${message}</div>`;
 }
 
 function resetToHome() {
@@ -434,24 +517,89 @@ searchInput.addEventListener('keypress', (e) => {
 document.getElementById('share-button').addEventListener('click', openShareModal);
 
 document.getElementById('customize-button').addEventListener('click', async () => {
+    console.log('Customize button clicked');
+    const modalContent1 = debugElement('modal-content');
+    if (!modalContent1) {
+        console.error('Modal content not found');
+        alert('Error: Modal content not found');
+        return;
+    }
     const customization = document.getElementById('customization-input').value;
-    if (customization.trim()) {
-        const button = document.getElementById('customize-button');
-        button.textContent = 'Customizing...';
-        button.disabled = true;
+    if (customization.trim().length < 10) {
+        alert('Please enter at least 10 characters for customization');
+        return;
+    }
 
-        try {
-            const promptId = document.querySelector('[data-prompt-id]').dataset.promptId;
-            const customizedPrompt = await customizePrompt(promptId, customization);
-            
+    const button = document.getElementById('customize-button');
+    const modalContent = document.getElementById('modal-content');
+    
+    if (!modalContent) {
+        alert('Error: Modal content not found');
+        return;
+    }
+    
+    const promptId = modalContent.getAttribute('data-prompt-id');
+    if (!promptId) {
+        alert('Error: Prompt ID not found');
+        return;
+    }
+
+    button.textContent = 'Customizing...';
+    button.disabled = true;
+
+    try {
+        const customizedPrompt = await customizePrompt(promptId, customization);
+        
+        if (customizedPrompt) {
             document.getElementById('modal-prompt').textContent = customizedPrompt;
             document.getElementById('customization-input').value = '';
-        } catch (error) {
-            alert('Failed to customize prompt: ' + error.message);
-        } finally {
-            button.textContent = 'Customize Prompt';
-            button.disabled = false;
+            
+            // Show success message
+            const successMessage = document.createElement('div');
+            successMessage.className = 'text-green-500 text-sm mt-2';
+            successMessage.textContent = 'Prompt customized successfully!';
+            button.parentNode.insertBefore(successMessage, button.nextSibling);
+            
+            // Remove success message after 3 seconds
+            setTimeout(() => successMessage.remove(), 3000);
         }
+    } catch (error) {
+        console.error('Customization failed:', error);
+        alert('Failed to customize prompt: ' + (error.message || 'Unknown error'));
+    } finally {
+        button.textContent = 'Customize Prompt';
+        button.disabled = false;
+    }
+});
+
+document.getElementById('customization-input').addEventListener('input', function(e) {
+    const minLength = 10;
+    const maxLength = 1000;
+    const remaining = maxLength - e.target.value.length;
+    
+    // Update character count
+    let countElement = document.getElementById('char-count');
+    if (!countElement) {
+        countElement = document.createElement('div');
+        countElement.id = 'char-count';
+        countElement.className = 'text-sm text-gray-400 mt-1';
+        e.target.parentNode.appendChild(countElement);
+    }
+    
+    countElement.textContent = `${e.target.value.length}/${maxLength} characters`;
+    
+    // Validate length
+    const customizeButton = document.getElementById('customize-button');
+    if (e.target.value.length < minLength) {
+        customizeButton.disabled = true;
+        countElement.className = 'text-sm text-red-500 mt-1';
+    } else if (e.target.value.length > maxLength) {
+        e.target.value = e.target.value.slice(0, maxLength);
+        customizeButton.disabled = true;
+        countElement.className = 'text-sm text-red-500 mt-1';
+    } else {
+        customizeButton.disabled = false;
+        countElement.className = 'text-sm text-gray-400 mt-1';
     }
 });
 
@@ -496,3 +644,29 @@ window.addEventListener('online', () => {
     console.log('Network connection restored');
     // You can add UI feedback here
 });
+
+function showCustomizationLoading() {
+    const button = document.getElementById('customize-button');
+    button.innerHTML = `
+        <svg class="animate-spin h-5 w-5 mr-2 inline" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Customizing...
+    `;
+    button.disabled = true;
+}
+
+function hideCustomizationLoading() {
+    const button = document.getElementById('customize-button');
+    button.textContent = 'Customize Prompt';
+    button.disabled = false;
+}
+
+function showCustomizationError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'text-red-500 text-sm mt-2';
+    errorDiv.textContent = message;
+    document.getElementById('customize-button').parentNode.appendChild(errorDiv);
+    setTimeout(() => errorDiv.remove(), 3000);
+}

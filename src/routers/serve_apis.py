@@ -8,10 +8,8 @@ from src.schemas.models import (
     Prompt, 
     PromptCategory, 
     CustomizationRequest, 
-    CustomizationResponse,
     CreatePromptRequest,
-    UpdatePromptRequest,
-    PaginatedPromptResponse
+    UpdatePromptRequest
 )
 from src.llm.pinecone_langchain import retrieve_documents
 from utils.app_logger import setup_logger
@@ -20,16 +18,12 @@ from src.llm.system_prompts import system_prompt_for_customization
 from utils.rate_limiter import rate_limit
 from utils.redis_cache import cached
 
-router = APIRouter(prefix="/api/v1")
-db = get_async_database()
 logger = setup_logger("src/routers/serve_apis.py")
 router = APIRouter(prefix="/api")
 db = get_async_database()
-logger = setup_logger("src/routers/serve_apis.py")
 
-@router.get("/prompts/search", response_model=PaginatedPromptResponse)
-# @rate_limit(max_requests=5, window_seconds=60)
-# @cached(expire=300)  # Cache for 5 minutes
+@router.get("/prompts/search")
+@cached(expire=300)  # Cache for 5 minutes
 async def search_prompts(
     request: Request,
     query: Optional[str] = None,
@@ -49,10 +43,7 @@ async def search_prompts(
         if tags:
             filters["tags"] = {"$all": tags}
         
-        # Add public/private filter
-        filters["is_public"] = True
-        
-        if query:
+        if query and query!="undefined":
             document_retrieved = retrieve_documents(
                 tenant_id="harsh90731",
                 query=query,
@@ -60,40 +51,30 @@ async def search_prompts(
                 top_k=page_size * page
             )
             
-            prompt_ids = [doc.metadata["prompt_id"] 
-                         for i, doc in enumerate(document_retrieved)
-                         if i >= skip and i < skip + page_size]
+            prompt_ids = [doc.id for doc in document_retrieved]
             
-            sort_pipeline = [{"$sort": {sort_by: 1 if sort_order == "asc" else -1}}]
             if document_retrieved:
-                prompts = await db.prompts.find(
+                prompts = await db.prompts_discover.find(
                     {"prompt_id": {"$in": prompt_ids}}
-                ).sort(sort_pipeline).to_list(length=None)
+                ).to_list(length=None)
             else:
                 prompts = []
             
             total_items = len(document_retrieved)
             
         else:
-            pipeline = []
-            if filters:
-                pipeline.append({"$match": filters})
-                
-            # Add sorting
-            pipeline.append(
-                {"$sort": {sort_by: 1 if sort_order == "asc" else -1}}
-            )
-            
-            count_pipeline = pipeline + [{"$count": "total"}]
-            count_result = await db.prompts.aggregate(count_pipeline).to_list(length=1)
-            total_items = count_result[0]["total"] if count_result else 0
-            
-            pipeline.extend([
+            pipeline = [
+                {"$match": filters}, # Filtering first to reduce the documents to sort
+                {"$sort": {sort_by: 1 if sort_order == "asc" else -1}},
                 {"$skip": skip},
-                {"$limit": page_size}
-            ])
-            
-            prompts = await db.prompts.aggregate(pipeline).to_list(length=None)
+                {"$limit": page_size},
+                {"$project": {"_id": 0}} # Remove _id at the end
+            ]
+
+            prompts = await db.prompts_discover.aggregate(pipeline).to_list(length=None)
+
+            # Count query optimization - use count_documents for simple counting with filters
+            total_items = await db.prompts_discover.count_documents(filters)
 
         # Clean up and prepare response
         for prompt in prompts:
@@ -116,8 +97,32 @@ async def search_prompts(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while searching prompts"
         )
+    
+@router.get("/prompts/{prompt_id}")
+@cached(expire=300)  # Cache for 5 minutes
+async def get_prompt(prompt_id: str):
+    try:
+        prompt = await db.prompts_discover.find_one({"prompt_id": prompt_id})
         
-@router.post("/prompts", response_model=Prompt)
+        if not prompt:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Prompt not found"
+            )
+            
+        prompt.pop("_id", None)
+        return prompt
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in get_prompt: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch prompt"
+        )
+        
+@router.post("/create_prompt", response_model=Prompt)
 @rate_limit(max_requests=5, window_seconds=60)
 async def create_prompt(
     prompt: CreatePromptRequest
@@ -144,7 +149,7 @@ async def create_prompt(
             detail="Failed to create prompt"
         )
         
-@router.put("/prompts/{prompt_id}", response_model=Prompt)
+@router.put("/update_prompt/{prompt_id}", response_model=Prompt)
 async def update_prompt(
     prompt_id: str,
     prompt_update: UpdatePromptRequest
@@ -179,8 +184,7 @@ async def update_prompt(
         )
         
 @router.get("/categories")
-# @rate_limit(max_requests=5, window_seconds=60)
-# @cached(expire=600)  # Cache for 10 minutes
+@cached(expire=3000)
 async def get_categories(
     request: Request
 ):
@@ -189,7 +193,7 @@ async def get_categories(
     """
     try:
         # Get distinct categories from published prompts only
-        categories = await db.prompts.distinct("category")
+        categories = await db.prompts_discover.distinct("category")
         
         # If no categories found, return empty list
         if not categories:
@@ -204,16 +208,16 @@ async def get_categories(
             detail="Failed to fetch categories"
         )
 
-@router.post("/prompts/customize", response_model=CustomizationResponse)
+@router.post("/prompts/customize")
 @rate_limit(max_requests=5, window_seconds=60)
-async def customize_prompt(request: CustomizationRequest):
+async def customize_prompt(request: Request, customization: CustomizationRequest):
     """
     Customize a prompt with user's specific requirements
     """
     try:
         # Find the prompt
-        prompt = await db.prompts.find_one(
-            {"prompt_id": request.prompt_id, "is_public": True}
+        prompt = await db.prompts_discover.find_one(
+            {"prompt_id": customization.prompt_id, "is_public": True}
         )
         
         if not prompt:
@@ -224,8 +228,8 @@ async def customize_prompt(request: CustomizationRequest):
 
         # Combine original prompt with customization request
         message = (
-            f"Original Prompt: {prompt['prompt']}\n"
-            f"Customization Request: {request.customization_message}"
+            f"Original Prompt: {prompt['original_prompt']}\n"
+            f"Customization Request: {customization.customization_message}"
         )
         
         # Get customized response from LLM
@@ -233,12 +237,13 @@ async def customize_prompt(request: CustomizationRequest):
             input=message,
             system_prompt=system_prompt_for_customization
         )
+        logger.info(f"Customized prompt: {customized_prompt}")
         
         return {
-            "original_prompt": prompt['prompt'],
+            "original_prompt": prompt['original_prompt'],
             "customized_prompt": customized_prompt,
-            "prompt_id": request.prompt_id,
-            "customization_message": request.customization_message,
+            "prompt_id": customization.prompt_id,
+            "customization_message": customization.customization_message,
             "created_at": datetime.utcnow()
         }
         

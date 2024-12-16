@@ -72,7 +72,7 @@ async def upload_prompts(prompts_data: List[Dict[str, Any]]):
             }
             
             # Insert into database
-            await db.prompts.insert_one(document)
+            await db.prompts_unmodified.insert_one(document)
             
             return True, None
             

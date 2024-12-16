@@ -4,7 +4,16 @@ from openai import OpenAI
 from utils.config import settings
 from utils.app_logger import setup_logger
 
+
 logger = setup_logger("src/llm/openai_llm.py")
+google_client = OpenAI(
+    api_key=settings.GEMINI_API_KEY,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+)
+groq_client = OpenAI(
+    api_key=settings.GROQ_API_KEY,
+    base_url="https://api.groq.com/openai/v1"
+)
 
 async def google_chat_completions(
     input: str,
@@ -13,12 +22,8 @@ async def google_chat_completions(
 ):
     try:
         logger.info("Starting google_chat_completions with model: %s", model)
-        client = OpenAI(
-            api_key=settings.GEMINI_API_KEY,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-        )
         
-        response = client.chat.completions.create(
+        response = google_client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -41,12 +46,8 @@ async def groq_chat_completions(
 ):
     try:
         logger.info("Starting groq_chat_completions with model: %s", model)
-        client = OpenAI(
-            api_key=settings.GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1"
-        )
         
-        response = client.chat.completions.create(
+        response = groq_client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},

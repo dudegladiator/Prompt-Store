@@ -9,7 +9,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 pc = Pinecone(api_key=settings.PINECONE_API_KEY)
 embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=settings.GEMINI_API_KEY)
-index = pc.Index("nm1")
+index = pc.Index("nm2")
 
 logger = setup_logger("src/llm/pinecone.py")
 
@@ -66,3 +66,5 @@ def retrieve_documents(tenant_id: str, query: str, filters: Dict = None, top_k: 
     except Exception as e:
         logger.error(f"Error retrieving documents for tenant_id {tenant_id}: {str(e)}")
         return None
+    
+# create_index("nm2")

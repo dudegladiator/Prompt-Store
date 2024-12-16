@@ -8,6 +8,7 @@ pydantic-settings
 redis
 pandas
 
+langchain
 langchain-pinecone
 langchain-google-genai
 pinecone-client[grpc]
