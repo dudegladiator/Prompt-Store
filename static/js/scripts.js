@@ -3,7 +3,9 @@ const API = {
     base: "https://prompt.harshiitkgp.in/api",
     search: '/prompts/search',
     categories: '/categories',
-    customize: '/prompts/customize'
+    customize: '/prompts/customize',
+    upload: '/create_prompt',
+    like: '/prompts/:prompt_id/like'
 };
 
 function debugElement(id) {
@@ -34,16 +36,6 @@ async function fetchAPI(endpoint, options = {}) {
         throw error;
     }
 }
-
-const fakePrompts = [
-    {
-        id: 1,
-        title: "Professional Email Writer",
-        description: "1AI prompt for writing professional and effective emails",
-        category: "Business Writing",
-        prompt: "I want you to act as a professional email writer. Write a clear and concise email that maintains a professional tone while effectively communicating the message. Consider the recipient's perspective and ensure proper email etiquette."
-    }
-];
 
 // State Management
 let currentPage = 1;
@@ -162,9 +154,7 @@ async function searchByCategory(category) {
         const searchParams = new URLSearchParams({
             category: category,
             page: currentPage,
-            page_size: pageSize,
-            sort_by: 'created_at',
-            sort_order: 'desc'
+            page_size: pageSize
         });
 
         const results = await fetchAPI(`${API.search}?${searchParams}`);
@@ -180,39 +170,72 @@ async function searchByCategory(category) {
     }
 }
 
-// Fake API Calls
-async function fakeSearchAPI(query, page, pageSize, category = null) {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+// Like functionality
+async function likePrompt(promptId) {
+    try {
+        const response = await fetchAPI(`/prompts/${promptId}/like`, {
+            method: 'POST'
+        });
+        
+        if (response.success) {
+            const loveButton = document.getElementById('love-button');
+            const loveCount = document.getElementById('love-count');
+            
+            // Get current count and increment it
+            let currentCount = parseInt(loveCount.textContent || '0');
+            currentCount += 1;
+            
+            // Update the display
+            loveCount.textContent = currentCount;
+            
+            // Update the heart icon
+            const heartIcon = loveButton.querySelector('i');
+            heartIcon.classList.remove('far');
+            heartIcon.classList.add('fas');
+            
+            // Disable the button
+            loveButton.disabled = true;
+            loveButton.classList.add('opacity-50');
+            
+            // Optional: Add a success animation
+            loveCount.classList.add('scale-110', 'text-red-500');
+            setTimeout(() => {
+                loveCount.classList.remove('scale-110', 'text-red-500');
+            }, 300);
+        }
+    } catch (error) {
+        console.error('Error liking prompt:', error);
+        alert('Failed to like prompt: ' + (error.response?.message || 'Prompt Already Liked'));
+    }
+}
 
-    let filtered = [...fakePrompts];
+// Upload prompt functionality
+async function handleUploadSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
     
-    // Filter by search query
-    if (query) {
-        const searchTerm = query.toLowerCase();
-        filtered = filtered.filter(p => 
-            p.title.toLowerCase().includes(searchTerm) ||
-            p.description.toLowerCase().includes(searchTerm) ||
-            p.prompt.toLowerCase().includes(searchTerm)
-        );
-    }
-
-    // Filter by category
-    if (category) {
-        filtered = filtered.filter(p => p.category === category);
-    }
-
-    // Calculate pagination
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginatedItems = filtered.slice(startIndex, endIndex);
-
-    return {
-        items: paginatedItems,
-        totalPages: Math.ceil(filtered.length / pageSize),
-        currentPage: page,
-        totalItems: filtered.length
+    const promptData = {
+        name: form.querySelector('input[placeholder="Prompt Title"]').value,
+        description: form.querySelector('textarea[placeholder="Prompt Description"]').value,
+        category: form.querySelector('select').value,
+        prompt: form.querySelector('textarea[placeholder="Prompt Content"]').value,
+        author_id: form.querySelector('textarea[placeholder="Author ID"]').value,
+        tags: form.querySelector('input[name="tags"]').value.split(',').map(tag => tag.trim())
     };
+
+    try {
+        const response = await fetchAPI(API.upload, {
+            method: 'POST',
+            body: JSON.stringify(promptData)
+        });
+
+        alert(response.message);
+        closeUploadModal();
+        form.reset();
+    } catch (error) {
+        console.error('Error uploading prompt:', error);
+        alert('Failed to upload prompt');
+    }
 }
 
 async function customizePrompt(promptId, customization) {
@@ -327,7 +350,7 @@ function displayPagination(totalPages) {
         if (endPage < totalPages - 1) {
             const ellipsis = document.createElement('span');
             ellipsis.className = 'text-white px-2';
-            ellipsis.textContent = '...';https://accepting-fixes-ordinary-beads.trycloudflare.com/?prompt_id=4d8555db-4d63-49dd-84ec-f382dcb7167e
+            ellipsis.textContent = '...';
             paginationWrapper.appendChild(ellipsis);
         }
         paginationWrapper.appendChild(createPaginationButton(totalPages.toString(), totalPages));
@@ -352,11 +375,6 @@ function createPaginationButton(text, page, isActive = false) {
     button.textContent = text;
     button.addEventListener('click', () => handlePageChange(page));
     return button;
-}
-
-// URL and Modal Functions
-function findPromptById(id) {
-    return fakePrompts.find(p => p.id === parseInt(id));
 }
 
 async function checkUrlForPrompt() {
@@ -415,17 +433,59 @@ async function fetchPromptById(promptId) {
     }
 }
 
+async function fetchAuthorPrompts(authorId) {
+    try {
+        const response = await fetchAPI(`/prompts/author/${authorId}`);
+        displayResults(response);
+    } catch (error) {
+        console.error('Error fetching author prompts:', error);
+        showError('Failed to load your prompts');
+    }
+}
+
+function openAuthorPromptsModal() {
+    const authorId = prompt('Please enter your Author ID:');
+    if (authorId) {
+        fetchAuthorPrompts(authorId);
+    }
+}
+
 
 function openModal(prompt) {
     try {
         if (!prompt) {
             throw new Error('No prompt data available');
         }
+        console.log('Opening modal for prompt:', prompt);
 
         document.getElementById('modal-title').textContent = prompt.name || 'Untitled';
         document.getElementById('modal-category').textContent = prompt.category || 'Uncategorized';
         document.getElementById('modal-description').textContent = prompt.description || '';
         document.getElementById('modal-prompt').textContent = prompt.original_prompt || '';
+        
+        // Initialize like button and count
+        const loveButton = document.getElementById('love-button');
+        const loveCount = document.getElementById('love-count');
+        const heartIcon = loveButton.querySelector('i');
+        
+        // Set initial count
+        loveCount.textContent = prompt.like_count || '0';
+        
+        // Check if user has already liked this prompt
+        if (prompt.is_liked) {
+            heartIcon.classList.remove('far');
+            heartIcon.classList.add('fas');
+            loveButton.disabled = true;
+            loveButton.classList.add('opacity-50');
+        } else {
+            heartIcon.classList.remove('fas');
+            heartIcon.classList.add('far');
+            loveButton.disabled = false;
+            loveButton.classList.remove('opacity-50');
+        }
+        
+        // Add click handler
+        loveButton.onclick = () => likePrompt(prompt.prompt_id);
         
         // Store prompt ID for customization
         const modalContent = document.getElementById('modal-content');
@@ -515,6 +575,7 @@ searchInput.addEventListener('keypress', (e) => {
 });
 
 document.getElementById('share-button').addEventListener('click', openShareModal);
+document.getElementById('upload-form').addEventListener('submit', handleUploadSubmit);
 
 document.getElementById('customize-button').addEventListener('click', async () => {
     console.log('Customize button clicked');
@@ -575,48 +636,44 @@ document.getElementById('customize-button').addEventListener('click', async () =
 document.getElementById('customization-input').addEventListener('input', function(e) {
     const minLength = 10;
     const maxLength = 1000;
-    const remaining = maxLength - e.target.value.length;
+    const value = e.target.value.trim();
+    const remaining = maxLength - value.length;
     
     // Update character count
-    let countElement = document.getElementById('char-count');
-    if (!countElement) {
-        countElement = document.createElement('div');
-        countElement.id = 'char-count';
-        countElement.className = 'text-sm text-gray-400 mt-1';
-        e.target.parentNode.appendChild(countElement);
-    }
+    const countElement = document.getElementById('char-count');
+    countElement.textContent = `${value.length}/${maxLength} characters`;
     
-    countElement.textContent = `${e.target.value.length}/${maxLength} characters`;
-    
-    // Validate length
+    // Enable/disable customize button
     const customizeButton = document.getElementById('customize-button');
-    if (e.target.value.length < minLength) {
-        customizeButton.disabled = true;
-        countElement.className = 'text-sm text-red-500 mt-1';
-    } else if (e.target.value.length > maxLength) {
-        e.target.value = e.target.value.slice(0, maxLength);
-        customizeButton.disabled = true;
-        countElement.className = 'text-sm text-red-500 mt-1';
-    } else {
-        customizeButton.disabled = false;
-        countElement.className = 'text-sm text-gray-400 mt-1';
+    customizeButton.disabled = value.length < minLength || value.length > maxLength;
+    customizeButton.classList.toggle('opacity-100', !customizeButton.disabled);
+    customizeButton.classList.toggle('cursor-not-allowed', customizeButton.disabled);
+});
+
+function toggleMenu() {
+    const menu = document.getElementById('menu-dropdown');
+    menu.classList.toggle('hidden');
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', function(event) {
+    const menu = document.getElementById('menu-dropdown');
+    const menuButton = event.target.closest('button');
+    
+    if (!menu.contains(event.target) && !menuButton?.onclick?.toString()?.includes('toggleMenu')) {
+        menu.classList.add('hidden');
     }
 });
 
-// Handle browser back/forward buttons
-window.addEventListener('popstate', (event) => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const promptId = urlParams.get('prompt_id');
-    
-    if (promptId) {
-        const prompt = findPromptById(parseInt(promptId));
-        if (prompt) {
-            openModal(prompt);
-        }
-    } else {
-        closeModal();
-    }
-});
+function openUploadModal() {
+    document.getElementById('upload-modal').classList.remove('hidden');
+    document.getElementById('menu-dropdown').classList.add('hidden'); // Close menu when opening modal
+}
+
+function closeUploadModal() {
+    document.getElementById('upload-modal').classList.add('hidden');
+}
+
 
 // Close modals when clicking outside
 promptModal.addEventListener('click', (e) => {

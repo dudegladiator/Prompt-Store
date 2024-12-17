@@ -3,11 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prompt Store</title>
+    <meta name="description" content="Prompt Store - Your One-Stop Shop for AI Prompts">
+    <meta name="keywords" content="AI prompts, prompt engineering, ChatGPT prompts, AI tools">
+    <meta name="author" content="Prompt Store">
+    
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/image/image.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/image/image.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/image/image.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Required Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.8/clipboard.min.js"></script>
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Prompt Store">
+    <meta property="og:description" content="Your One-Stop Shop for AI Prompts">
+    <meta property="og:image" content="/og-image.jpg">
+    <meta property="og:url" content="https://yourpromptstore.com">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Prompt Store">
+    <meta name="twitter:description" content="Your One-Stop Shop for AI Prompts">
+    <meta name="twitter:image" content="/twitter-image.jpg">
+    
+    <title>Prompt Store</title>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#000000',
+                        'secondary': '#1a1a1a',
+                        'accent': '#3b82f6'
+                    }
+                }
+            }
+        }
+    </script>
 </head>
 <body class="bg-black min-h-screen">
+    <!-- Menu Container -->
+    <div class="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <!-- Upload Prompt Button (Hidden on mobile, visible on laptop) -->
+        <button onclick="openUploadModal()" class="hidden md:flex px-4 py-2 text-sm text-black bg-white rounded-full hover:bg-gray-200 focus:outline-none items-center gap-2">
+            <i class="fas fa-upload"></i>
+            Upload Prompt
+        </button>
+
+        <!-- Menu Button with Dropdown -->
+        <div class="relative">
+            <button onclick="toggleMenu()" class="px-4 py-2 text-sm text-black bg-white rounded-full hover:bg-gray-200 focus:outline-none">
+                <i class="fas fa-ellipsis-h"></i>
+            </button>
+            <div id="menu-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg">
+                <!-- Upload Prompt (Only visible on mobile) -->
+                <button onclick="openUploadModal()" class="md:hidden w-full text-left px-4 py-2 text-sm text-black hover:bg-gray-100 flex items-center gap-2">
+                    <i class="fas fa-upload"></i>
+                    Upload Prompt
+                </button>
+                <!-- View Your Prompts (Always visible) -->
+                <button onclick="openAuthorPromptsModal()" class="w-full text-left px-4 py-2 text-sm text-black hover:bg-gray-100 flex items-center gap-2">
+                    <i class="fas fa-folder-open"></i>
+                    View Your Prompts
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Upload Modal (remains the same) -->
+    <div id="upload-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-zinc-900 rounded-lg p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Upload New Prompt</h3>
+                <button onclick="closeUploadModal()" class="text-white hover:text-gray-300">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="upload-form" class="space-y-4">
+                <div>
+                    <input type="text" placeholder="Prompt Title" required minlength="3" maxlength="100"
+                        class="w-full p-3 text-white bg-zinc-800 rounded-lg border border-zinc-700 focus:border-white focus:outline-none">
+                </div>
+                <div>
+                    <select required class="w-full p-3 text-white bg-zinc-800 rounded-lg border border-zinc-700 focus:border-white focus:outline-none">
+                        <option value="">Select Category</option>
+                        <option value="Creative">Creative</option>
+                        <option value="Professional">Professional</option>
+                        <option value="Technical">Technical</option>
+                        <option value="Educational">Educational</option>
+                        <option value="Lifestyle">Lifestyle</option>
+                        <option value="Content">Content</option>
+                        <option value="Analytical">Analytical</option>
+                        <option value="Communication">Communication</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Utility">Utility</option>
+                    </select>
+                </div>
+                <div>
+                    <textarea placeholder="Prompt Content" required minlength="10" rows="4"
+                        class="w-full p-3 text-white bg-zinc-800 rounded-lg border border-zinc-700 focus:border-white focus:outline-none"></textarea>
+                </div>
+                <div>
+                    <textarea placeholder="Prompt Description" required minlength="10" maxlength="500" rows="3"
+                        class="w-full p-3 text-white bg-zinc-800 rounded-lg border border-zinc-700 focus:border-white focus:outline-none"></textarea>
+                </div>
+                <div>
+                    <textarea placeholder="Author ID" rows="1"
+                        class="w-full p-3 text-white bg-zinc-800 rounded-lg border border-zinc-700 focus:border-white focus:outline-none"></textarea>
+                </div>
+                <div>
+                    <input type="text" name="tags" placeholder="Tags (comma-separated)"
+                        class="w-full p-3 text-white bg-zinc-800 rounded-lg border border-zinc-700 focus:border-white focus:outline-none">
+                </div>
+                <button type="submit" class="w-full px-4 py-2 text-sm font-medium text-black bg-white rounded-lg hover:bg-gray-200 focus:outline-none">
+                    Upload Prompt
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Main Container -->
     <div id="search-container" class="flex flex-col items-center justify-center min-h-screen transition-all duration-300">
         <!-- Title Section -->
@@ -21,7 +143,10 @@
         <div class="w-full max-w-2xl px-4 mb-6">
             <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <div class="w-6 h-6 rounded-full bg-white"></div>
+                    <div class="w-6 h-6 rounded-full bg-white">
+                        <img src="/static/image/image.png"
+                        onerror="this.onerror=null; this.parentElement.innerHTML='<h1 class=\'text-4xl font-bold text-white text-center\'>Prompt Store</h1>'"/>
+                    </div>
                 </div>
                 <input type="text" id="search-input" 
                     class="w-full p-4 pl-12 text-sm text-white bg-zinc-900 rounded-full border border-zinc-800 focus:border-white focus:ring-1 focus:ring-white focus:outline-none"
@@ -68,7 +193,16 @@
             </button>
     
             <h2 class="text-xl font-bold text-white mb-4" id="modal-title">Prompt Title</h2>
-            <span class="inline-block px-3 py-1 text-sm text-white bg-zinc-800 rounded-full mb-4" id="modal-category">Category</span>
+            <!-- Add this inside the modal-content div, after the modal-title -->
+            <div class="flex items-center justify-between mb-4">
+                <span class="inline-block px-3 py-1 text-sm text-white bg-zinc-800 rounded-full" id="modal-category">Category</span>
+                <button class="flex items-center gap-2 text-white hover:text-red-500 transition-all duration-300" 
+                        id="love-button">
+                    <i class="far fa-heart transition-all duration-300"></i>
+                    <span id="love-count" class="transition-all duration-300">0</span>
+                </button>
+            </div>
+            
             
             <div class="flex space-x-2 mb-4">
                 <button id="copy-button" class="px-4 py-2 text-sm text-black bg-white rounded-lg hover:bg-gray-200 focus:outline-none">
@@ -91,8 +225,10 @@
                     rows="4"></textarea>
                 <div id="char-count" class="text-sm text-gray-400 mt-1">0/1000 characters</div>
                 <button id="customize-button"
-                    class="w-full px-4 py-2 text-sm font-medium text-black bg-white rounded-lg hover:bg-gray-200 focus:outline-none">
-                    Customize Prompt
+                    class="w-full px-4 py-2 text-sm font-medium text-black bg-white rounded-lg hover:bg-gray-200 focus:outline-none flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
+                    disabled>
+                    <i class="fas fa-magic"></i>
+                    <span>Customize Prompt</span>
                 </button>
             </div>
         </div>
@@ -103,17 +239,21 @@
         <div class="bg-zinc-900 rounded-lg p-6 max-w-md w-full">
             <h3 class="text-xl font-bold text-white mb-4">Share Prompt</h3>
             <div class="grid grid-cols-2 gap-4">
-                <button class="p-4 text-white bg-zinc-800 rounded-lg hover:bg-zinc-700" onclick="shareViaEmail()">
-                    Email
+                <button class="p-4 text-white bg-zinc-800 rounded-lg hover:bg-zinc-700 flex items-center justify-center gap-2" onclick="shareViaEmail()">
+                    <i class="fas fa-envelope"></i>
+                    <span>Email</span>
                 </button>
-                <button class="p-4 text-white bg-zinc-800 rounded-lg hover:bg-zinc-700" onclick="shareViaTwitter()">
-                    Twitter
+                <button class="p-4 text-white bg-zinc-800 rounded-lg hover:bg-zinc-700 flex items-center justify-center gap-2" onclick="shareViaTwitter()">
+                    <i class="fab fa-twitter"></i>
+                    <span>Twitter</span>
                 </button>
-                <button class="p-4 text-white bg-zinc-800 rounded-lg hover:bg-zinc-700" onclick="shareViaLinkedIn()">
-                    LinkedIn
+                <button class="p-4 text-white bg-zinc-800 rounded-lg hover:bg-zinc-700 flex items-center justify-center gap-2" onclick="shareViaLinkedIn()">
+                    <i class="fab fa-linkedin"></i>
+                    <span>LinkedIn</span>
                 </button>
-                <button class="p-4 text-white bg-zinc-800 rounded-lg hover:bg-zinc-700" onclick="shareViaCopy()">
-                    Copy Link
+                <button class="p-4 text-white bg-zinc-800 rounded-lg hover:bg-zinc-700 flex items-center justify-center gap-2" onclick="shareViaCopy()">
+                    <i class="fas fa-link"></i>
+                    <span>Copy Link</span>
                 </button>
             </div>
             <button class="w-full mt-4 px-4 py-2 text-sm text-black bg-white rounded-lg hover:bg-gray-200" onclick="closeShareModal()">

@@ -12,3 +12,4 @@ async def get_index():
     """Serve the main index.html file"""
     with open("static/index.html") as f:
         return HTMLResponse(content=f.read())
+    

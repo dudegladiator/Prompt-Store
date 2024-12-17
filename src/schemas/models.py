@@ -35,8 +35,8 @@ class CreatePromptRequest(BaseModel):
     category: PromptCategory
     prompt: str = Field(..., min_length=10)
     tags: List[str] = []
-    author_id: Optional[str] = None
-    is_public: bool = False
+    author_id: str = Field(..., min_length=3)
+    is_public: Optional[bool] = False
 
 class UpdatePromptRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=3, max_length=100)

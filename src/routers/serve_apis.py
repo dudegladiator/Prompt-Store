@@ -29,7 +29,7 @@ async def search_prompts(
     query: Optional[str] = None,
     category: Optional[PromptCategory] = None,
     tags: Optional[List[str]] = Query(None),
-    sort_by: Optional[str] = Query("created_at", enum=["created_at", "like_count", "name"]),
+    sort_by: Optional[str] = Query("like_count", enum=["created_at", "like_count", "name"]),
     sort_order: Optional[str] = Query("desc", enum=["asc", "desc"]),
     page: int = Query(1, ge=1),
     page_size: int = Query(9, ge=1, le=100)
@@ -122,9 +122,40 @@ async def get_prompt(prompt_id: str):
             detail="Failed to fetch prompt"
         )
         
-@router.post("/create_prompt", response_model=Prompt)
-@rate_limit(max_requests=5, window_seconds=60)
+@router
+        
+@router.post("/prompts/{prompt_id}/like")
+@rate_limit(max_requests=1, window_seconds=10000)
+async def like_prompt(request: Request, prompt_id: str):
+    try:
+        result = await db.prompts_discover.update_one(
+            {"prompt_id": prompt_id},
+            {"$inc": {"like_count": 1}}
+        )
+        
+        if not result.modified_count:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Prompt not found"
+            )
+            
+        return {
+            "status": "Prompt liked successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in like_prompt: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to like prompt"
+        )
+        
+@router.post("/create_prompt")
+# @rate_limit(max_requests=5, window_seconds=60)
 async def create_prompt(
+    request: Request,
     prompt: CreatePromptRequest
 ):
     try:
