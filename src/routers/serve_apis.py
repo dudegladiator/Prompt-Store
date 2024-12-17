@@ -122,8 +122,6 @@ async def get_prompt(prompt_id: str):
             detail="Failed to fetch prompt"
         )
         
-@router
-        
 @router.post("/prompts/{prompt_id}/like")
 @rate_limit(max_requests=1, window_seconds=10000)
 async def like_prompt(request: Request, prompt_id: str):
