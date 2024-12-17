@@ -1,15 +1,21 @@
 from typing import Dict, List
 from pinecone import Pinecone, ServerlessSpec
-from utils.config import settings
+from utils.config import get_sync_database, settings
 from langchain_pinecone import PineconeVectorStore
 from langchain_core.documents import Document
 from utils.app_logger import setup_logger
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_mongodb import MongoDBAtlasVectorSearch
+from pymongo import MongoClient
 
 
 pc = Pinecone(api_key=settings.PINECONE_API_KEY)
-embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=settings.GEMINI_API_KEY1)
 index = pc.Index("nm2")
+
+sync_db = get_sync_database()
+
+embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=settings.GEMINI_API_KEY1)
+
 
 logger = setup_logger("src/llm/pinecone.py")
 
@@ -67,4 +73,18 @@ def retrieve_documents(tenant_id: str, query: str, filters: Dict = None, top_k: 
         logger.error(f"Error retrieving documents for tenant_id {tenant_id}: {str(e)}")
         return None
     
-# create_index("nm2")
+def retrieve_documents_mongo_db(tenant_id: str, query: str, filters: Dict = None, top_k: int = 5):
+    logger.info(f"Retrieving documents for tenant_id: {tenant_id}, query: {query}, top_k: {top_k}")
+    try:
+        vector_store = MongoDBAtlasVectorSearch(
+            collection=sync_db.prompts_discover,
+            embedding=embeddings,
+            index_name="default",
+            relevance_score_fn="cosine",
+        )
+        data = vector_store.similarity_search(query=query, k=top_k)
+        logger.info(f"Successfully retrieved {len(data)} documents for tenant_id: {tenant_id}")
+        return data
+    except Exception as e:
+        logger.error(f"Error retrieving documents for tenant_id {tenant_id}: {str(e)}")
+        return None

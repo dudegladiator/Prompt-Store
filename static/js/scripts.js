@@ -5,7 +5,8 @@ const API = {
     categories: '/categories',
     customize: '/prompts/customize',
     upload: '/create_prompt',
-    like: '/prompts/:prompt_id/like'
+    like: '/prompts/:prompt_id/like',
+    author: '/prompts/author/:author_id'
 };
 
 function debugElement(id) {
@@ -435,7 +436,7 @@ async function fetchPromptById(promptId) {
 
 async function fetchAuthorPrompts(authorId) {
     try {
-        const response = await fetchAPI(`/prompts/author/${authorId}`);
+        const response = await fetchAPI(API.author.replace(':author_id', authorId));
         displayResults(response);
     } catch (error) {
         console.error('Error fetching author prompts:', error);

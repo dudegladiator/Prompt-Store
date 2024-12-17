@@ -122,6 +122,32 @@ async def get_prompt(prompt_id: str):
             detail="Failed to fetch prompt"
         )
         
+@router.get("/prompts/author/{author_id}")
+@cached(expire=300)  # Cache for 5 minutes
+async def get_prompts_by_author(author_id: str):
+    try:
+        prompts = await db.prompts_discover.find({"author_id": author_id}).to_list(length=None)
+        
+        if not prompts:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No prompts found for author"
+            )
+            
+        for prompt in prompts:
+            prompt.pop("_id", None)
+            
+        return prompts
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in get_prompts_by_author: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch prompts"
+        )
+        
 @router.post("/prompts/{prompt_id}/like")
 @rate_limit(max_requests=1, window_seconds=10000)
 async def like_prompt(request: Request, prompt_id: str):
